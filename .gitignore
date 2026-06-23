@@ -1,0 +1,9 @@
+.vscode
+.vscode-test
+.settings
+.claude
+node_modules
+out
+.project
+.classpath
+target

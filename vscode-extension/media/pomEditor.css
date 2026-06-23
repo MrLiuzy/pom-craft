@@ -1,0 +1,352 @@
+:root {
+    --border: var(--vscode-panel-border, #3c3c3c);
+    --bg: var(--vscode-editor-background, #1e1e1e);
+    --fg: var(--vscode-editor-foreground, #d4d4d4);
+    --desc: var(--vscode-descriptionForeground, #999);
+    --input-bg: var(--vscode-input-background, #3c3c3c);
+    --input-fg: var(--vscode-input-foreground, #ccc);
+    --input-border: var(--vscode-input-border, #555);
+    --focus: var(--vscode-focusBorder, #007acc);
+    --badge-bg: var(--vscode-badge-background, #4d4d4d);
+    --badge-fg: var(--vscode-badge-foreground, #fff);
+    --btn-bg: var(--vscode-button-background, #0e639c);
+    --btn-fg: var(--vscode-button-foreground, #fff);
+    --btn-hover: var(--vscode-button-hoverBackground, #1177bb);
+    --hover: var(--vscode-list-hoverBackground, #2a2d2e);
+    --sidebar: var(--vscode-sideBar-background, #252526);
+    --font: var(--vscode-font-family, -apple-system, sans-serif);
+    --font-size: var(--vscode-font-size, 13px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--font);
+    font-size: var(--font-size);
+    color: var(--fg);
+    background: var(--bg);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ---- Main content area ---- */
+.content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+.tab-page {
+    display: none;
+    position: absolute;
+    inset: 0;
+    flex-direction: column;
+    overflow: hidden;
+}
+.tab-page.active {
+    display: flex;
+}
+
+/* ---- Bottom tab bar ---- */
+.tab-bar {
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--sidebar);
+    flex-shrink: 0;
+}
+.tab-btn {
+    padding: 6px 18px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--desc);
+    background: none;
+    border: none;
+    border-top: 2px solid transparent;
+    transition: color 0.1s;
+    white-space: nowrap;
+}
+.tab-btn:hover { color: var(--fg); }
+.tab-btn.active {
+    color: var(--fg);
+    border-top-color: var(--focus);
+}
+
+/* ======== OVERVIEW TAB ======== */
+.overview {
+    padding: 16px 20px;
+    overflow-y: auto;
+    gap: 16px;
+}
+
+.section {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.section-title {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--desc);
+    background: var(--sidebar);
+    border-bottom: 1px solid var(--border);
+}
+.section-body {
+    padding: 8px 0;
+}
+
+/* Form rows */
+.form-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 12px;
+    gap: 12px;
+    min-height: 28px;
+}
+.form-label {
+    width: 100px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--desc);
+    text-align: right;
+}
+.form-value {
+    font-size: 13px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--fg);
+}
+
+/* Properties table */
+.prop-table {
+    width: 100%;
+}
+.prop-row {
+    display: flex;
+    align-items: center;
+    padding: 3px 12px;
+    gap: 8px;
+    font-size: 12px;
+    font-family: var(--vscode-editor-font-family, monospace);
+}
+.prop-row:hover { background: var(--hover); }
+.prop-key {
+    color: var(--vscode-symbolIcon-variableForeground, #9cdcfe);
+    flex-shrink: 0;
+    min-width: 120px;
+}
+.prop-eq {
+    color: var(--desc);
+    flex-shrink: 0;
+}
+.prop-val {
+    color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ======== DEPENDENCY HIERARCHY TAB ======== */
+.dep-hierarchy {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dep-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--sidebar);
+    flex-shrink: 0;
+}
+.dep-toolbar input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--input-fg);
+    border-radius: 3px;
+    font-size: 12px;
+    outline: none;
+    max-width: 280px;
+}
+.dep-toolbar input:focus {
+    border-color: var(--focus);
+}
+.dep-toolbar input::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+}
+.toolbar-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--input-border);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.toolbar-btn:hover { background: var(--btn-hover); }
+
+.dep-panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+.dep-tree-panel {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dep-splitter {
+    width: 4px;
+    cursor: col-resize;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.dep-splitter:hover,
+.dep-splitter.active {
+    background: var(--focus);
+}
+.dep-list-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dep-panel-header {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--desc);
+    background: var(--sidebar);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.dep-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 4px 0;
+}
+
+/* Tree styles */
+.tree-node {
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.tree-node:hover { background: var(--hover); }
+.tree-caret {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+    color: var(--desc);
+    font-size: 10px;
+}
+.tree-caret.empty { visibility: hidden; }
+.tree-icon {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.tree-label {
+    white-space: nowrap;
+}
+.tree-children {
+    display: none;
+}
+.tree-children.expanded {
+    display: block;
+}
+
+/* Resolved dependency list */
+.dep-list-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 12px;
+    gap: 8px;
+    font-size: 12px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    border-bottom: 1px solid transparent;
+}
+.dep-list-item:hover { background: var(--hover); }
+.dep-list-gav {
+    white-space: nowrap;
+}
+.dep-list-scope {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--badge-bg);
+    color: var(--badge-fg);
+    flex-shrink: 0;
+}
+
+/* ======== Effective POM / pom.xml TABS ======== */
+.xml-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.xml-view textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    padding: 12px 16px;
+    font-family: var(--vscode-editor-font-family, 'Consolas', 'Courier New', monospace);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg);
+    background: var(--bg);
+    resize: none;
+    outline: none;
+    tab-size: 2;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+/* ======== Empty states ======== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--desc);
+    gap: 8px;
+    font-size: 13px;
+    text-align: center;
+}
+.empty-icon { font-size: 28px; opacity: 0.4; }
+
+/* ======== Scrollbar ======== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-background, #424242);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-hoverBackground, #555);
+}

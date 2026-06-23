@@ -1,0 +1,49 @@
+{
+  "name": "helloworld",
+  "displayName": "helloworld",
+  "description": "helloworld",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.124.2"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "helloworld.helloWorld",
+        "title": "Hello World"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "pomCraft.pomEditor",
+        "displayName": "POM Craft Editor",
+        "selector": [
+          { "filenamePattern": "pom.xml" }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "pnpm run compile && pnpm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.124.2",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  }
+}

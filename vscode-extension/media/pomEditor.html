@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none';
+                   style-src ${cspSource} 'unsafe-inline';
+                   script-src ${cspSource} 'nonce-${nonce}';
+                   connect-src https://search.maven.org;">
+    <title>POM Editor</title>
+    <link rel="stylesheet" href="${styleUri}">
+</head>
+<body>
+    <!-- ===== CONTENT AREA ===== -->
+    <div class="content">
+
+        <!-- OVERVIEW TAB -->
+        <div class="tab-page active" id="page-overview">
+            <div class="overview" style="display:flex;flex-direction:column;height:100%;">
+                <!-- Artifact Section -->
+                <div class="section">
+                    <div class="section-title">Artifact</div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <span class="form-label">Group Id:</span>
+                            <span class="form-value" id="ov-groupId">-</span>
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Artifact Id:</span>
+                            <span class="form-value" id="ov-artifactId">-</span>
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Version:</span>
+                            <span class="form-value" id="ov-version">-</span>
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Packaging:</span>
+                            <span class="form-value" id="ov-packaging">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent Section -->
+                <div class="section" id="parent-section">
+                    <div class="section-title">Parent</div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <span class="form-label">Group Id:</span>
+                            <span class="form-value" id="ov-parent-groupId">-</span>
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Artifact Id:</span>
+                            <span class="form-value" id="ov-parent-artifactId">-</span>
+                        </div>
+                        <div class="form-row">
+                            <span class="form-label">Version:</span>
+                            <span class="form-value" id="ov-parent-version">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Properties Section -->
+                <div class="section" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+                    <div class="section-title">Properties</div>
+                    <div class="section-body prop-table" id="ov-properties" style="flex:1;overflow-y:auto;">
+                        <div class="empty-state">
+                            <span class="empty-icon">&#128196;</span>
+                            <span>No properties</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPENDENCY HIERARCHY TAB -->
+        <div class="tab-page" id="page-hierarchy">
+            <div class="dep-hierarchy">
+                <div class="dep-toolbar">
+                    <input type="text" id="depFilter" placeholder="Filter dependencies...">
+                    <button class="toolbar-btn" id="btnRefresh" title="Refresh dependency tree">&#8635; Refresh</button>
+                </div>
+                <div class="dep-panels" id="depPanels">
+                    <!-- Dependency Tree -->
+                    <div class="dep-tree-panel" id="depTreePanel">
+                        <div class="dep-panel-header">Dependency Hierarchy</div>
+                        <div class="dep-panel-body" id="depTree">
+                            <div class="empty-state">
+                                <span class="empty-icon">&#127795;</span>
+                                <span>Dependency tree will appear here</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Splitter -->
+                    <div class="dep-splitter" id="depSplitter"></div>
+                    <!-- Resolved Dependencies -->
+                    <div class="dep-list-panel" id="depListPanel">
+                        <div class="dep-panel-header">Resolved Dependencies</div>
+                        <div class="dep-panel-body" id="depList">
+                            <div class="empty-state">
+                                <span class="empty-icon">&#128230;</span>
+                                <span>Resolved dependencies will appear here</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EFFECTIVE POM TAB -->
+        <div class="tab-page" id="page-effective">
+            <div class="xml-view">
+                <textarea readonly id="effectivePomText" placeholder="Effective POM will appear here..."></textarea>
+            </div>
+        </div>
+
+        <!-- POM.XML TAB -->
+        <div class="tab-page" id="page-raw">
+            <div class="xml-view">
+                <textarea id="rawPomText" placeholder="pom.xml content will appear here..."></textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== BOTTOM TAB BAR ===== -->
+    <div class="tab-bar">
+        <button class="tab-btn active" data-page="overview">Overview</button>
+        <button class="tab-btn" data-page="hierarchy">Dependency Hierarchy</button>
+        <button class="tab-btn" data-page="effective">Effective POM</button>
+        <button class="tab-btn" data-page="raw">pom.xml</button>
+    </div>
+
+    <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>
