@@ -271,7 +271,8 @@ function renderResolvedList(deps) {
             '<div class="empty-state"><span class="empty-icon">&#128230;</span><span>No resolved dependencies</span></div>';
     } else {
         listEl.innerHTML = deps.map(d =>
-            '<div class="dep-list-item' + (!d.resolved ? ' unresolved' : '') + '">' +
+            '<div class="dep-list-item' + (!d.resolved ? ' unresolved' : '') + '" data-gav="' +
+            escHtml(d.groupId + ':' + d.artifactId + ':' + (d.version || '')) + '">' +
             '<span class="dep-list-gav">' +
             escHtml(d.groupId) + ' : ' + escHtml(d.artifactId) + ' : ' + escHtml(d.version || '(managed)') +
             '</span>' +
@@ -299,7 +300,8 @@ function renderTreeNode(deps, gaVersionMap, conflictMap, depth) {
 
         const hasChildren = d.children && d.children.length > 0;
 
-        html += '<div class="' + rowClass + '" style="padding-left:' + (indentPx + 8) + 'px">';
+        html += '<div class="' + rowClass + '" style="padding-left:' + (indentPx + 8) + 'px" data-gav="' +
+            escHtml(d.groupId + ':' + d.artifactId + ':' + (d.version || '')) + '">';
         html += '<span class="tree-caret' + (!hasChildren ? ' empty' : ' collapsed') + '">' +
             (hasChildren ? '&#9656;' : '&#9656;') + '</span>';
         html += '<span class="tree-icon">' + (isUnresolved ? '&#9888;' : '&#128196;') + '</span>';
@@ -498,6 +500,48 @@ function escHtml(s) {
     const d = document.createElement('div');
     d.textContent = String(s);
     return d.innerHTML;
+}
+
+// ---- Context menu ----
+const ctxMenuEl = document.getElementById('contextMenu');
+let ctxMenuTarget = null;
+
+document.addEventListener('contextmenu', function (e) {
+    const node = e.target.closest('.tree-node, .dep-list-item');
+    if (!node || !node.dataset.gav) {
+        if (ctxMenuEl) ctxMenuEl.classList.remove('visible');
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    ctxMenuTarget = node;
+    if (ctxMenuEl) {
+        ctxMenuEl.style.left = e.clientX + 'px';
+        ctxMenuEl.style.top = e.clientY + 'px';
+        ctxMenuEl.classList.add('visible');
+    }
+});
+
+document.addEventListener('click', function () {
+    if (ctxMenuEl) ctxMenuEl.classList.remove('visible');
+    ctxMenuTarget = null;
+});
+
+const ctxCopyBtn = document.getElementById('ctxCopy');
+if (ctxCopyBtn) {
+    ctxCopyBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (ctxMenuTarget) {
+            const parts = ctxMenuTarget.dataset.gav.split(':');
+            const gid = parts[0] || '';
+            const aid = parts[1] || '';
+            const ver = parts.slice(2).join(':') || '';
+            const xml = '<dependency>\n  <groupId>' + gid + '</groupId>\n  <artifactId>' + aid + '</artifactId>\n  <version>' + ver + '</version>\n</dependency>';
+            navigator.clipboard.writeText(xml);
+        }
+        if (ctxMenuEl) ctxMenuEl.classList.remove('visible');
+        ctxMenuTarget = null;
+    });
 }
 
 vscode.postMessage({ type: 'ready' });
