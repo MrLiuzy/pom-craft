@@ -145,6 +145,30 @@
     <!-- Custom context menu -->
     <div id="contextMenu" class="context-menu">
         <div class="context-menu-item" id="ctxCopy">&#128203; Copy GAV</div>
+        <div class="context-menu-item" id="ctxLock">&#128274; Lock Version</div>
+    </div>
+
+    <!-- Lock version modal -->
+    <div id="lockModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">Lock Version</div>
+            <div class="modal-field">
+                <label>Group Id</label>
+                <input type="text" id="lockGroupId" readonly>
+            </div>
+            <div class="modal-field">
+                <label>Artifact Id</label>
+                <input type="text" id="lockArtifactId" readonly>
+            </div>
+            <div class="modal-field">
+                <label>Version</label>
+                <input type="text" id="lockVersion" required>
+            </div>
+            <div class="modal-actions">
+                <button id="lockCancel">Cancel</button>
+                <button id="lockConfirm">OK</button>
+            </div>
+        </div>
     </div>
 
     <script nonce="${nonce}" src="${scriptUri}"></script>

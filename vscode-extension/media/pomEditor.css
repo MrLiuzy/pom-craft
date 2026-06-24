@@ -485,6 +485,84 @@ body {
     background: var(--vscode-menu-selectionBackground, #094771);
 }
 
+/* ======== Modal ======== */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.visible {
+    display: flex;
+}
+.modal-box {
+    background: var(--vscode-editor-background, #1e1e1e);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    min-width: 360px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.modal-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--fg);
+}
+.modal-field {
+    margin-bottom: 12px;
+}
+.modal-field label {
+    display: block;
+    font-size: 11px;
+    color: var(--desc);
+    margin-bottom: 4px;
+}
+.modal-field input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--input-fg);
+    border-radius: 3px;
+    font-size: 12px;
+    outline: none;
+}
+.modal-field input:focus {
+    border-color: var(--focus);
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+.modal-actions button {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+#lockCancel {
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-button-secondaryForeground, #ccc);
+}
+#lockCancel:hover {
+    background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+#lockConfirm {
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+}
+#lockConfirm:hover {
+    background: var(--btn-hover);
+}
+
 /* ======== Scrollbar ======== */
 ::-webkit-scrollbar {
     width: 8px;

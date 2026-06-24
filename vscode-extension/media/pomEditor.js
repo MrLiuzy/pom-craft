@@ -544,4 +544,48 @@ if (ctxCopyBtn) {
     });
 }
 
+// ---- Lock version ----
+const ctxLockBtn = document.getElementById('ctxLock');
+if (ctxLockBtn) {
+    ctxLockBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (ctxMenuEl) ctxMenuEl.classList.remove('visible');
+        if (ctxMenuTarget) {
+            const parts = ctxMenuTarget.dataset.gav.split(':');
+            document.getElementById('lockGroupId').value = parts[0] || '';
+            document.getElementById('lockArtifactId').value = parts[1] || '';
+            document.getElementById('lockVersion').value = parts.slice(2).join(':') || '';
+            document.getElementById('lockModal').classList.add('visible');
+            document.getElementById('lockVersion').focus();
+            document.getElementById('lockVersion').select();
+        }
+        ctxMenuTarget = null;
+    });
+}
+
+document.getElementById('lockCancel').addEventListener('click', function () {
+    document.getElementById('lockModal').classList.remove('visible');
+});
+
+document.getElementById('lockConfirm').addEventListener('click', function () {
+    const version = document.getElementById('lockVersion').value.trim();
+    if (!version) return;
+    const groupId = document.getElementById('lockGroupId').value;
+    const artifactId = document.getElementById('lockArtifactId').value;
+    document.getElementById('lockModal').classList.remove('visible');
+    vscode.postMessage({
+        type: 'lockVersion',
+        groupId: groupId,
+        artifactId: artifactId,
+        version: version,
+    });
+});
+
+// Close modal on overlay click
+document.getElementById('lockModal').addEventListener('click', function (e) {
+    if (e.target === this) {
+        this.classList.remove('visible');
+    }
+});
+
 vscode.postMessage({ type: 'ready' });

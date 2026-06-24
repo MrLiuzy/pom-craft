@@ -161,6 +161,9 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'requestEffectivePom':
                     await this.handleRequestEffectivePom(webviewPanel, document);
                     break;
+                case 'lockVersion':
+                    await this.handleLockVersion(document, message.groupId, message.artifactId, message.version);
+                    break;
             }
         });
 
@@ -246,6 +249,69 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
         });
     }
 
+    private async handleLockVersion(
+        document: vscode.TextDocument,
+        groupId: string,
+        artifactId: string,
+        version: string,
+    ): Promise<void> {
+        let text = document.getText();
+        const depEntry = '\n        <dependency>\n            <groupId>' + groupId +
+            '</groupId>\n            <artifactId>' + artifactId +
+            '</artifactId>\n            <version>' + version +
+            '</version>\n        </dependency>';
+
+        // Check if dependencyManagement already exists
+        const dmMatch = text.match(/<dependencyManagement>([\s\S]*?)<\/dependencyManagement>/);
+        if (dmMatch) {
+            // Check if this dependency already exists in depMgmt
+            const existRegex = new RegExp(
+                '<groupId>' + escapeRegex(groupId) + '</groupId>\\s*' +
+                '<artifactId>' + escapeRegex(artifactId) + '</artifactId>',
+                'm'
+            );
+            if (existRegex.test(dmMatch[1])) {
+                // Replace existing version
+                const verRegex = new RegExp(
+                    '(<groupId>' + escapeRegex(groupId) + '</groupId>\\s*' +
+                    '<artifactId>' + escapeRegex(artifactId) + '</artifactId>\\s*' +
+                    '<version>)[^<]*(</version>)', 'm'
+                );
+                text = text.replace(verRegex, '$1' + version + '$2');
+            } else {
+                // Add to existing depMgmt
+                const depsMatch = dmMatch[1].match(/<dependencies>([\s\S]*?)<\/dependencies>/);
+                if (depsMatch) {
+                    text = text.replace(depsMatch[1], depsMatch[1] + depEntry + '\n    ');
+                } else {
+                    text = text.replace(
+                        '<dependencyManagement>',
+                        '<dependencyManagement>\n    <dependencies>' + depEntry + '\n    </dependencies>'
+                    );
+                }
+            }
+        } else {
+            // Create dependencyManagement before </project> or before <dependencies>
+            const insertBefore = text.indexOf('<dependencies>');
+            const dmBlock = '\n    <dependencyManagement>\n        <dependencies>' +
+                depEntry + '\n        </dependencies>\n    </dependencyManagement>\n';
+            if (insertBefore !== -1) {
+                text = text.substring(0, insertBefore) + dmBlock + text.substring(insertBefore);
+            } else {
+                text = text.replace('</project>', dmBlock + '</project>');
+            }
+        }
+
+        const fullRange = new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length)
+        );
+        const wsEdit = new vscode.WorkspaceEdit();
+        wsEdit.replace(document.uri, fullRange, text);
+        await vscode.workspace.applyEdit(wsEdit);
+        await document.save();
+    }
+
     private async buildHtml(webview: vscode.Webview): Promise<string> {
         const nonce = getNonce();
 
@@ -267,4 +333,8 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
 
         return html;
     }
+}
+
+function escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
