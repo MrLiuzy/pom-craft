@@ -3,8 +3,8 @@ package com.github.mrliuzy.pomcraft.resolver;
 import org.eclipse.aether.transfer.AbstractTransferListener;
 import org.eclipse.aether.transfer.TransferEvent;
 import org.eclipse.aether.transfer.TransferResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 import java.io.PrintStream;
 import java.text.DecimalFormat;
@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 class LoggingTransferListener extends AbstractTransferListener {
 
-    private static final Logger LOG = LoggerFactory.getLogger(LoggingTransferListener.class);
+    private static final Logger LOG = Log.getLogger(LoggingTransferListener.class);
 
     private final Map<TransferResource, Long> downloads = new ConcurrentHashMap<>();
     private int lastLength;

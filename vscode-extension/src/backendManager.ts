@@ -153,6 +153,14 @@ export class BackendManager {
         }, 30000);
     }
 
+    private debugLog(label: string, data: string) {
+        const config = vscode.workspace.getConfiguration('pomCraft');
+        if (config.get<boolean>('debug', false)) {
+            this.outputChannel.appendLine(`[DEBUG] ${label}:`);
+            this.outputChannel.appendLine(data);
+        }
+    }
+
     async resolve(targetPom: string, workspaceDirs: string[]): Promise<ResolveResult> {
         if (this.status !== 'ready') {
             return { success: false, errorMessage: 'Backend is not ready' };
@@ -169,6 +177,8 @@ export class BackendManager {
             settingsXml: settingsXml || undefined,
         });
 
+        this.debugLog('/resolve request', requestBody);
+
         return new Promise((resolve) => {
             const req = http.request(
                 {
@@ -182,6 +192,7 @@ export class BackendManager {
                     let data = '';
                     res.on('data', (chunk) => (data += chunk));
                     res.on('end', () => {
+                        this.debugLog('/resolve response', data);
                         try {
                             resolve(JSON.parse(data));
                         } catch {
@@ -213,6 +224,8 @@ export class BackendManager {
             settingsXml: settingsXml || undefined,
         });
 
+        this.debugLog('/effective-pom request', requestBody);
+
         return new Promise((resolve) => {
             const req = http.request(
                 {
@@ -226,6 +239,7 @@ export class BackendManager {
                     let data = '';
                     res.on('data', (chunk) => (data += chunk));
                     res.on('end', () => {
+                        this.debugLog('/effective-pom response', data);
                         try { resolve(JSON.parse(data)); } catch {
                             resolve({ success: false, errorMessage: 'Invalid response from backend' });
                         }

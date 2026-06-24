@@ -18,12 +18,12 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.repository.WorkspaceReader;
 import org.eclipse.aether.repository.WorkspaceRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 public class WorkspaceProjectReader implements WorkspaceReader {
 
-    private static final Logger LOG = LoggerFactory.getLogger(WorkspaceProjectReader.class);
+    private static final Logger LOG = Log.getLogger(WorkspaceProjectReader.class);
 
     private final WorkspaceRepository repository;
     private final Map<String, File> artifactsByGav = new HashMap<>();

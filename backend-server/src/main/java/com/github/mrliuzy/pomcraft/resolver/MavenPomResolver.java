@@ -18,8 +18,8 @@ import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.model.building.ModelBuildingResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 import com.github.mrliuzy.pomcraft.config.PomParserConfig;
 import com.github.mrliuzy.pomcraft.model.ConflictInfo;
@@ -28,7 +28,7 @@ import com.github.mrliuzy.pomcraft.model.ParsedPomResult;
 
 public class MavenPomResolver {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MavenPomResolver.class);
+    private static final Logger LOG = Log.getLogger(MavenPomResolver.class);
 
     private final PomParserConfig config;
     private final MavenSystemFactory systemFactory;
@@ -139,7 +139,7 @@ public class MavenPomResolver {
         return result;
     }
 
-    public String getEffectivePomXml() {
+    public String getEffectivePomXml() throws Exception {
         try {
             Model model = buildEffectiveModel(config.getTargetPom());
             if (model == null) return null;
@@ -147,8 +147,7 @@ public class MavenPomResolver {
             new org.apache.maven.model.io.xpp3.MavenXpp3Writer().write(sw, model);
             return sw.toString();
         } catch (Exception e) {
-            LOG.error("Failed to get effective POM", e);
-            return null;
+            throw e;
         }
     }
 

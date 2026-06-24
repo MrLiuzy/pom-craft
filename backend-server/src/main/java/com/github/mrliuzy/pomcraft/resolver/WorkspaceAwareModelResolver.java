@@ -15,15 +15,15 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 import java.io.File;
 import java.util.List;
 
 public class WorkspaceAwareModelResolver implements ModelResolver {
 
-    private static final Logger LOG = LoggerFactory.getLogger(WorkspaceAwareModelResolver.class);
+    private static final Logger LOG = Log.getLogger(WorkspaceAwareModelResolver.class);
 
     private final MavenSystemFactory systemFactory;
     private final RepositorySystem repoSystem;

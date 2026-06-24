@@ -2,12 +2,12 @@ package com.github.mrliuzy.pomcraft.resolver;
 
 import org.eclipse.aether.RepositoryEvent;
 import org.eclipse.aether.AbstractRepositoryListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 class LoggingRepositoryListener extends AbstractRepositoryListener {
 
-    private static final Logger LOG = LoggerFactory.getLogger(LoggingRepositoryListener.class);
+    private static final Logger LOG = Log.getLogger(LoggingRepositoryListener.class);
 
     @Override
     public void artifactDeployed(RepositoryEvent event) {

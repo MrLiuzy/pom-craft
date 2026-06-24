@@ -26,6 +26,11 @@
           "type": "string",
           "default": "",
           "description": "Path to Maven settings.xml"
+        },
+        "pomCraft.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug output for backend responses"
         }
       }
     },

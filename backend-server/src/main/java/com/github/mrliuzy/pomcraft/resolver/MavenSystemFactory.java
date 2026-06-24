@@ -31,8 +31,8 @@ import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import org.eclipse.aether.util.repository.DefaultAuthenticationSelector;
 import org.eclipse.aether.util.repository.DefaultMirrorSelector;
 import org.eclipse.aether.util.repository.DefaultProxySelector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.mrliuzy.pomcraft.Log;
+import com.github.mrliuzy.pomcraft.Log.Logger;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,7 +40,7 @@ import java.util.List;
 
 public class MavenSystemFactory {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MavenSystemFactory.class);
+    private static final Logger LOG = Log.getLogger(MavenSystemFactory.class);
 
     private final PomParserConfig config;
     private final WorkspaceProjectReader workspaceReader;
