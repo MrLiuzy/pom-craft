@@ -4,7 +4,15 @@ import java.io.PrintStream;
 
 public class Log {
 
-    public static final Logger ROOT = new Logger("ROOT");
+    private static boolean enabled = false;
+
+    public static void setEnabled(boolean enabled) {
+        Log.enabled = enabled;
+    }
+
+    public static boolean isEnabled() {
+        return enabled;
+    }
 
     public static Logger getLogger(String name) {
         return new Logger(name);
@@ -20,13 +28,13 @@ public class Log {
         Logger(String name) { this.name = name; }
 
         private void log(PrintStream out, String level, String msg, Object... args) {
+            if (!enabled) return;
             out.println("[" + level + "] " + name + " - " + format(msg, args));
         }
 
         private String format(String msg, Object... args) {
             if (args == null || args.length == 0) return msg;
-            int i = 0;
-            return msg.replace("{}", "%s").formatted(args);
+            return String.format(msg.replace("{}", "%s"), args);
         }
 
         public void info(String msg, Object... args)  { log(System.out, "INFO", msg, args); }
@@ -34,7 +42,7 @@ public class Log {
         public void error(String msg, Object... args) { log(System.err, "ERROR", msg, args); }
         public void debug(String msg, Object... args) { log(System.out, "DEBUG", msg, args); }
 
-        public boolean isDebugEnabled() { return true; }
-        public boolean isInfoEnabled()  { return true; }
+        public boolean isDebugEnabled() { return enabled; }
+        public boolean isInfoEnabled()  { return enabled; }
     }
 }

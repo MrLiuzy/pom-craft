@@ -1,8 +1,8 @@
 package com.github.mrliuzy.pomcraft.test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ public class PomResolverTest {
 
     public static void main(String[] args) {
         PomParserConfig config = new PomParserConfig();
-        config.setWorkspaceDirectories(List.of(
+        config.setWorkspaceDirectories(Arrays.asList(
             new File(PomResolverTest.class.getResource("/dep-a").getFile()),
             new File(PomResolverTest.class.getResource("/dep-a-a").getFile())
         ));

@@ -1,75 +1,111 @@
 package com.github.mrliuzy.pomcraft;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+
 import com.github.mrliuzy.pomcraft.config.PomParserConfig;
 import com.github.mrliuzy.pomcraft.model.ConflictInfo;
 import com.github.mrliuzy.pomcraft.model.DependencyInfo;
 import com.github.mrliuzy.pomcraft.model.ParsedPomResult;
 import com.github.mrliuzy.pomcraft.resolver.MavenPomResolver;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
-
-import java.io.*;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
         int port = 0;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
+        for (String arg : args) {
+            if ("--debug".equals(arg)) {
+                Log.setEnabled(true);
+            } else {
+                try { port = Integer.parseInt(arg); } catch (NumberFormatException ignored) {}
+            }
         }
 
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
-        int actualPort = server.getAddress().getPort();
+        Server server = new Server(port);
+        server.setHandler(new AbstractHandler() {
+            @Override
+            public void handle(String target, Request baseRequest,
+                               HttpServletRequest request, HttpServletResponse response)
+                    throws IOException {
+                response.setContentType("application/json;charset=utf-8");
+                response.setHeader("Access-Control-Allow-Origin", "*");
+                baseRequest.setHandled(true);
 
-        server.createContext("/health", exchange -> {
-            sendJson(exchange, 200, "{\"status\":\"ok\"}");
-        });
-
-        server.createContext("/resolve", exchange -> {
-            try {
-                handleResolve(exchange);
-            } catch (Exception e) {
-                sendJson(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+                try {
+                    switch (target) {
+                        case "/health":
+                            sendJson(response, 200, "{\"status\":\"ok\"}");
+                            break;
+                        case "/resolve":
+                            if (!"POST".equals(request.getMethod())) {
+                                sendJson(response, 405, "{\"error\":\"Method not allowed\"}");
+                                return;
+                            }
+                            handleResolve(request, response);
+                            break;
+                        case "/effective-pom":
+                            if (!"POST".equals(request.getMethod())) {
+                                sendJson(response, 405, "{\"error\":\"Method not allowed\"}");
+                                return;
+                            }
+                            handleEffectivePom(request, response);
+                            break;
+                        default:
+                            sendJson(response, 404, "{\"error\":\"Not found\"}");
+                    }
+                } catch (Exception e) {
+                    sendJson(response, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
+                }
             }
         });
 
-        server.createContext("/effective-pom", exchange -> {
-            try {
-                handleEffectivePom(exchange);
-            } catch (Exception e) {
-                sendJson(exchange, 500, "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
-            }
-        });
-
-        server.setExecutor(null);
         server.start();
+        int actualPort = server.getURI().getPort();
 
         System.out.println("{\"port\":" + actualPort + "}");
         System.out.flush();
+
+        server.join();
     }
 
-    private static void handleResolve(HttpExchange exchange) throws Exception {
-        if (!"POST".equals(exchange.getRequestMethod())) {
-            sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}");
-            return;
+    private static void handleResolve(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String body = readBody(request);
+        PomParserConfig config = buildConfig(body);
+        MavenPomResolver resolver = new MavenPomResolver(config);
+        ParsedPomResult result = resolver.resolve();
+        sendJson(response, 200, toJson(result));
+    }
+
+    private static void handleEffectivePom(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String body = readBody(request);
+        PomParserConfig config = buildConfig(body);
+        MavenPomResolver resolver = new MavenPomResolver(config);
+        String xml = resolver.getEffectivePomXml();
+
+        if (xml != null) {
+            sendJson(response, 200,
+                "{\"success\":true,\"effectivePom\":\"" + escapeJson(xml) + "\"}");
+        } else {
+            sendJson(response, 500,
+                "{\"success\":false,\"errorMessage\":\"Failed to build effective POM\"}");
         }
+    }
 
-        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
+    private static PomParserConfig buildConfig(String body) {
         String targetPom = extractJsonString(body, "targetPom");
         boolean offline = "true".equals(extractJsonString(body, "offline"));
         boolean skipFailed = "true".equals(extractJsonString(body, "skipFailedResolution"));
         String settingsXml = extractJsonString(body, "settingsXml");
         List<String> wsDirs = extractJsonArray(body, "workspaceDirectories");
-
-        if (targetPom == null || targetPom.isEmpty()) {
-            sendJson(exchange, 400, "{\"error\":\"targetPom is required\"}");
-            return;
-        }
 
         PomParserConfig config = new PomParserConfig();
         config.setTargetPom(new File(targetPom));
@@ -87,53 +123,17 @@ public class Main {
                 }
             }
         }
-
-        MavenPomResolver resolver = new MavenPomResolver(config);
-        ParsedPomResult result = resolver.resolve();
-
-        String json = toJson(result);
-        sendJson(exchange, 200, json);
+        return config;
     }
 
-    private static void handleEffectivePom(HttpExchange exchange) throws Exception {
-        if (!"POST".equals(exchange.getRequestMethod())) {
-            sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}");
-            return;
+    private static String readBody(HttpServletRequest request) throws IOException {
+        java.io.BufferedReader reader = request.getReader();
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
         }
-
-        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
-        String targetPom = extractJsonString(body, "targetPom");
-        String settingsXml = extractJsonString(body, "settingsXml");
-        List<String> wsDirs = extractJsonArray(body, "workspaceDirectories");
-
-        if (targetPom == null || targetPom.isEmpty()) {
-            sendJson(exchange, 400, "{\"error\":\"targetPom is required\"}");
-            return;
-        }
-
-        PomParserConfig config = new PomParserConfig();
-        config.setTargetPom(new File(targetPom));
-
-        if (settingsXml != null && !settingsXml.isEmpty()) {
-            config.setSettingsXml(new File(settingsXml));
-        }
-        if (wsDirs != null) {
-            for (String dir : wsDirs) {
-                config.getWorkspaceDirectories().add(new File(dir));
-            }
-        }
-
-        MavenPomResolver resolver = new MavenPomResolver(config);
-        String xml = resolver.getEffectivePomXml();
-
-        if (xml != null) {
-            sendJson(exchange, 200,
-                "{\"success\":true,\"effectivePom\":\"" + escapeJson(xml) + "\"}");
-        } else {
-            sendJson(exchange, 500,
-                "{\"success\":false,\"errorMessage\":\"Failed to build effective POM\"}");
-        }
+        return sb.toString();
     }
 
     // ---- JSON helpers ----
@@ -291,12 +291,8 @@ public class Main {
         return result;
     }
 
-    private static void sendJson(HttpExchange exchange, int code, String json) throws IOException {
-        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        exchange.sendResponseHeaders(code, bytes.length);
-        exchange.getResponseBody().write(bytes);
-        exchange.close();
+    private static void sendJson(HttpServletResponse response, int code, String json) throws IOException {
+        response.setStatus(code);
+        response.getWriter().write(json);
     }
 }

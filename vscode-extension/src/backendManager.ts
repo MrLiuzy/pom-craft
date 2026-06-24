@@ -102,7 +102,12 @@ export class BackendManager {
         this.outputChannel.appendLine(`[INFO] Starting backend: ${javaBin} -jar ${jarPath}`);
         this.outputChannel.appendLine(`[INFO] JAVA_HOME: ${jdkPath || process.env.JAVA_HOME || '(default)'}`);
 
-        this.process = spawn(javaBin, ['-jar', jarPath], {
+        const args = ['-jar', jarPath];
+        if (this.isDebug()) {
+            args.push('--debug');
+        }
+
+        this.process = spawn(javaBin, args, {
             env,
             stdio: ['pipe', 'pipe', 'pipe'],
         });
@@ -111,7 +116,9 @@ export class BackendManager {
 
         this.process.stdout?.on('data', (data: Buffer) => {
             const text = data.toString();
-            this.outputChannel.appendLine(`[STDOUT] ${text.trim()}`);
+            if (this.isDebug()) {
+                this.outputChannel.appendLine(`[STDOUT] ${text.trim()}`);
+            }
 
             if (!portReceived) {
                 try {
@@ -129,7 +136,9 @@ export class BackendManager {
         });
 
         this.process.stderr?.on('data', (data: Buffer) => {
-            this.outputChannel.appendLine(`[STDERR] ${data.toString().trim()}`);
+            if (this.isDebug()) {
+                this.outputChannel.appendLine(`[STDERR] ${data.toString().trim()}`);
+            }
         });
 
         this.process.on('error', (err) => {
@@ -153,9 +162,12 @@ export class BackendManager {
         }, 30000);
     }
 
+    private isDebug(): boolean {
+        return vscode.workspace.getConfiguration('pomCraft').get<boolean>('debug', false);
+    }
+
     private debugLog(label: string, data: string) {
-        const config = vscode.workspace.getConfiguration('pomCraft');
-        if (config.get<boolean>('debug', false)) {
+        if (this.isDebug()) {
             this.outputChannel.appendLine(`[DEBUG] ${label}:`);
             this.outputChannel.appendLine(data);
         }
