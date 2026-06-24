@@ -7,6 +7,7 @@ let effectivePomData = null;
 let lastEffectivePomText = '';
 let treeData = null;
 let allDepsData = null;
+let tabConfig = { insertSpaces: true, tabSize: 4 };
 const renderedTabs = new Set();
 
 // ---- Tab switching ----
@@ -75,6 +76,8 @@ window.addEventListener('message', e => {
         case 'setPomData':
             rawPomText = msg.rawText || '';
             latestPomData = msg.pomData;
+            tabConfig.insertSpaces = msg.insertSpaces !== undefined ? msg.insertSpaces : true;
+            tabConfig.tabSize = msg.tabSize || 4;
             if (renderedTabs.size === 0) {
                 ensureTabRendered('overview');
             } else {
@@ -363,13 +366,27 @@ let rawPomOriginal = '';
 
 function renderRawPom(text) {
     rawPomOriginal = text || '';
-    document.getElementById('rawPomText').value = rawPomOriginal;
+    rawPomTextarea.value = rawPomOriginal;
 }
 
 // Sync textarea changes to VS Code document to mark dirty
-document.getElementById('rawPomText').addEventListener('input', function () {
+const rawPomTextarea = document.getElementById('rawPomText');
+rawPomTextarea.addEventListener('input', function () {
     if (this.value !== rawPomOriginal) {
         vscode.postMessage({ type: 'syncText', text: this.value });
+    }
+});
+
+// Tab key inserts spaces/tab instead of moving focus
+rawPomTextarea.addEventListener('keydown', function (e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const indent = tabConfig.insertSpaces ? ' '.repeat(tabConfig.tabSize) : '\t';
+        this.value = this.value.substring(0, start) + indent + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + indent.length;
+        this.dispatchEvent(new Event('input', { bubbles: true }));
     }
 });
 
@@ -377,15 +394,13 @@ document.getElementById('rawPomText').addEventListener('input', function () {
 document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        const textarea = document.getElementById('rawPomText');
-        const newText = textarea.value;
+        const newText = rawPomTextarea.value;
         if (newText !== rawPomOriginal) {
             vscode.postMessage({ type: 'updatePom', text: newText });
         }
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        const textarea = document.getElementById('rawPomText');
-        if (textarea && document.activeElement === textarea) {
+        if (rawPomTextarea && document.activeElement === rawPomTextarea) {
             e.stopPropagation();
         }
     }

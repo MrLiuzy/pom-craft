@@ -130,10 +130,13 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
             const text = document.getText();
             const pomData = parsePomXml(text);
             const deps = parseDependencies(text);
+            const tabConfig = vscode.workspace.getConfiguration('editor');
             webviewPanel.webview.postMessage({
                 type: 'setPomData',
                 rawText: text,
                 pomData: { ...pomData, dependencies: deps },
+                insertSpaces: tabConfig.get<boolean>('insertSpaces', true),
+                tabSize: tabConfig.get<number>('tabSize', 4),
             });
         };
 
