@@ -49,6 +49,17 @@ public class MavenPomResolver {
         try {
             Model effectiveModel = buildEffectiveModel(config.getTargetPom());
 
+            // Build managed version map from root POM's dependencyManagement
+            Map<String, String> managedVersions = new LinkedHashMap<>();
+            if (effectiveModel.getDependencyManagement() != null
+                && effectiveModel.getDependencyManagement().getDependencies() != null) {
+                for (Dependency dm : effectiveModel.getDependencyManagement().getDependencies()) {
+                    if (dm.getGroupId() != null && dm.getArtifactId() != null && dm.getVersion() != null) {
+                        managedVersions.put(dm.getGroupId() + ":" + dm.getArtifactId(), dm.getVersion());
+                    }
+                }
+            }
+
             List<DependencyInfo> directDeps = extractDirectDependencies(effectiveModel);
 
             List<DependencyInfo> allDeps = new LinkedList<>();
@@ -57,9 +68,11 @@ public class MavenPomResolver {
 
             for (DependencyInfo dep : directDeps) {
                 String ga = dep.gaKey();
-                gaWinner.put(ga, dep.getVersion());
+                String ver = managedVersions.getOrDefault(ga, dep.getVersion());
+                dep.setVersion(ver);
+                gaWinner.put(ga, ver);
                 allDeps.add(dep);
-                conflictTracker.computeIfAbsent(ga, k -> new LinkedHashSet<>()).add(dep.getVersion());
+                conflictTracker.computeIfAbsent(ga, k -> new LinkedHashSet<>()).add(ver);
             }
 
             Queue<DependencyInfo> queue = new LinkedList<>(directDeps);
@@ -83,15 +96,28 @@ public class MavenPomResolver {
 
                     DependencyInfo childInfo = toDependencyInfo(child);
                     String ga = childInfo.gaKey();
-                    String ver = childInfo.getVersion();
+                    String declaredVer = childInfo.getVersion();
+                    String managedVer = managedVersions.get(ga);
 
-                    conflictTracker.computeIfAbsent(ga, k -> new LinkedHashSet<>()).add(ver);
+                    conflictTracker.computeIfAbsent(ga, k -> new LinkedHashSet<>()).add(declaredVer);
+                    if (managedVer != null && !managedVer.equals(declaredVer)) {
+                        conflictTracker.get(ga).add(managedVer);
+                        childInfo.setManagedVersion(managedVer);
+                    }
                     current.getChildren().add(childInfo);
 
+                    String effectiveVer = managedVer != null ? managedVer : declaredVer;
                     String existingVer = gaWinner.get(ga);
                     if (existingVer == null) {
-                        gaWinner.put(ga, ver);
-                        allDeps.add(childInfo);
+                        gaWinner.put(ga, effectiveVer);
+                        DependencyInfo allDepEntry = childInfo;
+                        if (managedVer != null && !managedVer.equals(declaredVer)) {
+                            allDepEntry = new DependencyInfo(
+                                childInfo.getGroupId(), childInfo.getArtifactId(), managedVer,
+                                childInfo.getScope(), childInfo.isOptional(),
+                                childInfo.getType(), childInfo.getClassifier());
+                        }
+                        allDeps.add(allDepEntry);
                         queue.add(childInfo);
                     }
                 }

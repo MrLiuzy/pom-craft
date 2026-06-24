@@ -182,6 +182,7 @@ public class Main {
         sb.append(",\"classifier\":").append(jsonStr(d.getClassifier()));
         sb.append(",\"resolved\":").append(d.isResolved());
         sb.append(",\"errorMessage\":").append(jsonStr(d.getErrorMessage()));
+        sb.append(",\"managedVersion\":").append(jsonStr(d.getManagedVersion()));
         sb.append(",\"children\":[");
         boolean first = true;
         for (DependencyInfo child : d.getChildren()) {

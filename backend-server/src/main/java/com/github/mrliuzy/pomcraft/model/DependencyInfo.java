@@ -14,6 +14,7 @@ public class DependencyInfo {
     private String classifier;
     private boolean resolved = true;
     private String errorMessage;
+    private String managedVersion;
     private List<DependencyInfo> children = new ArrayList<>();
 
     public DependencyInfo() {}
@@ -65,6 +66,9 @@ public class DependencyInfo {
 
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+    public String getManagedVersion() { return managedVersion; }
+    public void setManagedVersion(String managedVersion) { this.managedVersion = managedVersion; }
 
     public List<DependencyInfo> getChildren() { return children; }
     public void setChildren(List<DependencyInfo> children) { this.children = children; }

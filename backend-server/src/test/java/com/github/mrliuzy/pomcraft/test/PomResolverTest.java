@@ -71,9 +71,16 @@ public class PomResolverTest {
         for (DependencyInfo dep : deps) {
             String version = gaVersionMap.get(dep.getGroupId()+":"+dep.getArtifactId());
             if(!dep.getVersion().equals(version)){
-                writer.printf("%s%s:%s:%s  (scope=%s, optional=%s, type=%s, resolved=%s, omited for conflict with %s)%n",
+                if(dep.getManagedVersion()!=null){
+                    writer.printf("%s%s:%s:%s  (scope=%s, optional=%s, type=%s, resolved=%s, managed from %s)%n",
+                    indent, dep.getGroupId(), dep.getArtifactId(), dep.getManagedVersion(),
+                    dep.getScope(), dep.isOptional(), dep.getType(),dep.isResolved(), dep.getVersion());
+                }
+                else {
+                    writer.printf("%s%s:%s:%s  (scope=%s, optional=%s, type=%s, resolved=%s, omited for conflict with %s)%n",
                     indent, dep.getGroupId(), dep.getArtifactId(), dep.getVersion(),
                     dep.getScope(), dep.isOptional(), dep.getType(),dep.isResolved(), version);
+                }
             }
             else {
                 writer.printf("%s%s:%s:%s  (scope=%s, optional=%s, type=%s, resolved=%s)%n",
