@@ -7,9 +7,8 @@ let backendManager: BackendManager;
 export function activate(context: vscode.ExtensionContext) {
     console.log('POM Craft extension is now active!');
 
-    // Create and start backend
+    // Create backend manager (started on first editor open)
     backendManager = new BackendManager(context.extensionPath);
-    backendManager.start();
 
     // Register command to show output
     context.subscriptions.push(
@@ -39,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     console.log('POM Craft extension is now deactivate!');
     if (backendManager) {
-        backendManager.stop();
+        backendManager.dispose();
     }
 }
 

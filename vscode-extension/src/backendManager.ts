@@ -76,6 +76,7 @@ export class BackendManager {
             return;
         }
 
+        this.outputChannel.appendLine('[INFO] Starting backend process...');
         this.setStatus('starting');
 
         const config = vscode.workspace.getConfiguration('pomCraft');
@@ -101,11 +102,13 @@ export class BackendManager {
 
         this.outputChannel.appendLine(`[INFO] Starting backend: ${javaBin} -jar ${jarPath}`);
         this.outputChannel.appendLine(`[INFO] JAVA_HOME: ${jdkPath || process.env.JAVA_HOME || '(default)'}`);
+        this.outputChannel.appendLine(`[INFO] Settings XML: ${this.getSettingsXml() || '(not set)'}`);
 
         const args = ['-jar', jarPath];
         if (this.isDebug()) {
             args.push('--debug');
         }
+        this.outputChannel.appendLine(`[INFO] Args: ${args.join(' ')}`);
 
         this.process = spawn(javaBin, args, {
             env,
@@ -162,6 +165,30 @@ export class BackendManager {
         }, 30000);
     }
 
+    private getSettingsXml(): string {
+        const pomCraft = vscode.workspace.getConfiguration('pomCraft');
+        const explicit = pomCraft.get<string>('settingsXml');
+        if (explicit) return explicit;
+        const javaConfig = vscode.workspace.getConfiguration('java.configuration.maven');
+        return javaConfig.get<string>('userSettings') || '';
+    }
+
+    private openCount = 0;
+
+    onEditorOpen() {
+        this.openCount++;
+        if (this.openCount === 1) {
+            this.start();
+        }
+    }
+
+    onEditorClose() {
+        this.openCount = Math.max(0, this.openCount - 1);
+        if (this.openCount === 0) {
+            this.stop();
+        }
+    }
+
     private isDebug(): boolean {
         return vscode.workspace.getConfiguration('pomCraft').get<boolean>('debug', false);
     }
@@ -178,8 +205,7 @@ export class BackendManager {
             return { success: false, errorMessage: 'Backend is not ready' };
         }
 
-        const config = vscode.workspace.getConfiguration('pomCraft');
-        const settingsXml = config.get<string>('settingsXml') || '';
+        const settingsXml = this.getSettingsXml();
 
         const requestBody = JSON.stringify({
             targetPom,
@@ -227,8 +253,7 @@ export class BackendManager {
             return { success: false, errorMessage: 'Backend is not ready' };
         }
 
-        const config = vscode.workspace.getConfiguration('pomCraft');
-        const settingsXml = config.get<string>('settingsXml') || '';
+        const settingsXml = this.getSettingsXml();
 
         const requestBody = JSON.stringify({
             targetPom,
@@ -268,10 +293,15 @@ export class BackendManager {
 
     stop() {
         if (this.process) {
+            this.outputChannel.appendLine('[INFO] Stopping backend process...');
             this.process.kill();
             this.process = null;
         }
         this.setStatus('stopped');
+    }
+
+    dispose() {
+        this.stop();
         this.statusBarItem.dispose();
         this.outputChannel.dispose();
     }

@@ -114,6 +114,8 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
+        this.backend.onEditorOpen();
+
         webviewPanel.webview.options = {
             enableScripts: true,
         };
@@ -178,6 +180,7 @@ export class PomCraftEditorProvider implements vscode.CustomTextEditorProvider {
 
         webviewPanel.onDidDispose(() => {
             changeListener.dispose();
+            this.backend.onEditorClose();
         });
     }
 
