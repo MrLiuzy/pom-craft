@@ -219,16 +219,27 @@ function renderDependencyTree(data) {
     }
 
     // Bind toggle handlers
+    function toggleNode(nodeEl) {
+        const caret = nodeEl.querySelector('.tree-caret');
+        if (!caret || caret.classList.contains('empty')) return;
+        const children = nodeEl.nextElementSibling;
+        if (children && children.classList.contains('tree-children')) {
+            const expanded = children.classList.toggle('expanded');
+            caret.classList.toggle('collapsed', !expanded);
+        }
+    }
+
     treeEl.querySelectorAll('.tree-caret').forEach(caret => {
         caret.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (this.classList.contains('empty')) return;
-            const children = this.parentElement.nextElementSibling;
-            if (children && children.classList.contains('tree-children')) {
-                const expanded = children.classList.toggle('expanded');
-                this.classList.toggle('collapsed', !expanded);
-                this.innerHTML = expanded ? '&#9660;' : '&#9656;';
-            }
+            toggleNode(this.parentElement);
+        });
+    });
+
+    treeEl.querySelectorAll('.tree-node').forEach(node => {
+        node.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            toggleNode(this);
         });
     });
 
@@ -238,17 +249,11 @@ function renderDependencyTree(data) {
     // Expand / collapse all buttons
     document.getElementById('btnExpandAll').onclick = function () {
         treeEl.querySelectorAll('.tree-children').forEach(c => c.classList.add('expanded'));
-        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => {
-            c.classList.remove('collapsed');
-            c.innerHTML = '&#9660;';
-        });
+        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => c.classList.remove('collapsed'));
     };
     document.getElementById('btnCollapseAll').onclick = function () {
         treeEl.querySelectorAll('.tree-children').forEach(c => c.classList.remove('expanded'));
-        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => {
-            c.classList.add('collapsed');
-            c.innerHTML = '&#9656;';
-        });
+        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => c.classList.add('collapsed'));
     };
 
     // Sort toggle
@@ -289,12 +294,15 @@ function renderTreeNode(deps, gaVersionMap, conflictMap, depth) {
     deps.forEach(d => {
         const ga = d.groupId + ':' + d.artifactId;
         const winnerVersion = gaVersionMap[ga];
-        const isConflict = d.version !== winnerVersion;
-        const cInfo = conflictMap[ga];
+        const isConflict = !d.managedVersion && d.version !== winnerVersion;
+        const isManaged = !!d.managedVersion;
         const isUnresolved = !d.resolved;
+
+        const displayVersion = isManaged ? d.managedVersion : (d.version || '');
 
         let rowClass = 'tree-node';
         if (isConflict) rowClass += ' conflict';
+        if (isManaged) rowClass += ' managed';
         if (isUnresolved) rowClass += ' unresolved';
         if (depth === 0) rowClass += ' root';
 
@@ -302,15 +310,20 @@ function renderTreeNode(deps, gaVersionMap, conflictMap, depth) {
 
         html += '<div class="' + rowClass + '" style="padding-left:' + (indentPx + 8) + 'px" data-gav="' +
             escHtml(d.groupId + ':' + d.artifactId + ':' + (d.version || '')) + '">';
-        html += '<span class="tree-caret' + (!hasChildren ? ' empty' : ' collapsed') + '">' +
-            (hasChildren ? '&#9656;' : '&#9656;') + '</span>';
+        html += '<span class="tree-caret' + (!hasChildren ? ' empty' : ' collapsed') + '"></span>';
         html += '<span class="tree-icon">' + (isUnresolved ? '&#9888;' : '&#128196;') + '</span>';
         html += '<span class="tree-label">';
         html += escHtml(d.artifactId) + ' ';
-        html += '<span class="tree-version' + (isConflict ? ' conflict-ver' : '') + (isUnresolved ? ' unresolved-ver' : '') + '">';
-        html += escHtml(d.version || '');
+        html += '<span class="tree-version' +
+            (isConflict ? ' conflict-ver' : '') +
+            (isManaged ? ' managed-ver' : '') +
+            (isUnresolved ? ' unresolved-ver' : '') + '">';
+        html += escHtml(displayVersion);
         html += '</span>';
 
+        if (isManaged) {
+            html += ' <span class="managed-note">managed from ' + escHtml(d.version) + '</span>';
+        }
         if (isConflict && winnerVersion) {
             html += ' <span class="conflict-badge" title="omitted for conflict with ' +
                 escHtml(winnerVersion) + '">omitted for conflict with ' + escHtml(winnerVersion) + '</span>';
