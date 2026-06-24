@@ -1,23 +1,49 @@
 const vscode = acquireVsCodeApi();
 let rawPomText = '';
 let latestPomData = null;
-
-// Track which tabs have been rendered (Overview renders on load)
+let hierarchyData = null;
+let lastHierarchyPomText = '';
+let effectivePomData = null;
+let lastEffectivePomText = '';
+let treeData = null;
+let allDepsData = null;
 const renderedTabs = new Set();
 
-// ---- Lazy render dispatcher ----
+// ---- Tab switching ----
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tabName = btn.dataset.page;
+        ensureTabRendered(tabName);
+
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('page-' + tabName).classList.add('active');
+    });
+});
+
 function ensureTabRendered(tabName) {
-    if (renderedTabs.has(tabName)) { return; }
+    if (tabName === 'hierarchy' && lastHierarchyPomText === rawPomText && hierarchyData) {
+        renderedTabs.add(tabName);
+        return;
+    }
+    if (tabName === 'effective' && lastEffectivePomText === rawPomText && effectivePomData) {
+        renderedTabs.add(tabName);
+        return;
+    }
+    if (renderedTabs.has(tabName)) return;
     renderedTabs.add(tabName);
     switch (tabName) {
         case 'overview':
             renderOverview(latestPomData);
             break;
         case 'hierarchy':
-            renderDependencyHierarchy(latestPomData);
+            lastHierarchyPomText = rawPomText;
+            requestHierarchy();
             break;
         case 'effective':
-            renderEffectivePom(rawPomText);
+            lastEffectivePomText = rawPomText;
+            requestEffectivePom();
             break;
         case 'raw':
             renderRawPom(rawPomText);
@@ -25,21 +51,22 @@ function ensureTabRendered(tabName) {
     }
 }
 
-// ---- Tab switching ----
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tabName = btn.dataset.page;
-        const pageId = 'page-' + tabName;
-        // Lazy render on first click
-        ensureTabRendered(tabName);
-        // Deactivate all
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-        // Activate clicked
-        btn.classList.add('active');
-        document.getElementById(pageId).classList.add('active');
-    });
-});
+function requestHierarchy() {
+    showLoading('depTree', 'Requesting dependency tree...');
+    showLoading('depList', 'Waiting...');
+    vscode.postMessage({ type: 'requestHierarchy' });
+}
+
+function requestEffectivePom() {
+    showLoading('effectivePomContainer', 'Requesting effective POM...');
+    vscode.postMessage({ type: 'requestEffectivePom' });
+}
+
+function showLoading(elementId, message) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><span>' + escHtml(message) + '</span></div>';
+}
 
 // ---- Messages from extension ----
 window.addEventListener('message', e => {
@@ -48,30 +75,84 @@ window.addEventListener('message', e => {
         case 'setPomData':
             rawPomText = msg.rawText || '';
             latestPomData = msg.pomData;
-            // First data arrival: render the default active tab (Overview)
             if (renderedTabs.size === 0) {
                 ensureTabRendered('overview');
             } else {
-                // Re-render only tabs that have already been visited
-                renderedTabs.forEach(tabName => {
-                    switch (tabName) {
+                renderedTabs.forEach(tab => {
+                    switch (tab) {
                         case 'overview': renderOverview(latestPomData); break;
-                        case 'hierarchy': renderDependencyHierarchy(latestPomData); break;
-                        case 'effective': renderEffectivePom(rawPomText); break;
                         case 'raw': renderRawPom(rawPomText); break;
                     }
                 });
             }
             break;
+
         case 'pomUpdated':
-            // Document was saved by the extension; received fresh parsed data
             rawPomText = msg.rawText || '';
             latestPomData = msg.pomData;
+            hierarchyData = null;
+            lastHierarchyPomText = '';
+            effectivePomData = null;
+            lastEffectivePomText = '';
+            currentFilterQuery = '';
+            document.getElementById('depFilter').value = '';
             renderOverview(latestPomData);
             renderRawPom(rawPomText);
-            // Clear cache for other tabs so they re-render on next visit
             renderedTabs.delete('hierarchy');
             renderedTabs.delete('effective');
+
+            const activeBtn = document.querySelector('.tab-btn.active');
+            if (activeBtn) {
+                const activeTab = activeBtn.dataset.page;
+                if (activeTab === 'hierarchy') {
+                    ensureTabRendered('hierarchy');
+                } else if (activeTab === 'effective') {
+                    ensureTabRendered('effective');
+                }
+            }
+            break;
+
+        case 'backendStatus':
+            if (msg.status === 'starting' || msg.status === 'stopped') {
+                if (!hierarchyData && renderedTabs.has('hierarchy')) {
+                    showLoading('depTree', 'Backend is starting, please wait...');
+                    showLoading('depList', 'Waiting...');
+                }
+                if (!effectivePomData && renderedTabs.has('effective')) {
+                    showLoading('effectivePomContainer', 'Backend is starting, please wait...');
+                }
+            } else if (msg.status === 'loading') {
+                if (!hierarchyData && renderedTabs.has('hierarchy')) {
+                    showLoading('depTree', 'Resolving dependencies...');
+                    showLoading('depList', 'Waiting...');
+                }
+                if (!effectivePomData && renderedTabs.has('effective')) {
+                    showLoading('effectivePomContainer', 'Resolving effective POM...');
+                }
+            }
+            break;
+
+        case 'hierarchyResult':
+            hierarchyData = msg.result;
+            if (msg.result.success) {
+                renderDependencyTree(msg.result.data);
+            } else {
+                document.getElementById('depTree').innerHTML =
+                    '<div class="empty-state error"><span class="empty-icon">&#9888;</span><span>' +
+                    escHtml(msg.result.errorMessage || 'Resolution failed') + '</span></div>';
+                document.getElementById('depList').innerHTML = '';
+            }
+            break;
+
+        case 'effectivePomResult':
+            effectivePomData = msg;
+            if (msg.success) {
+                renderEffectivePom(msg.effectivePom || '');
+            } else {
+                document.getElementById('effectivePomContainer').innerHTML =
+                    '<div class="empty-state error"><span class="empty-icon">&#9888;</span><span>' +
+                    escHtml(msg.errorMessage || 'Failed to get effective POM') + '</span></div>';
+            }
             break;
     }
 });
@@ -91,7 +172,6 @@ function renderOverview(data) {
         document.getElementById('ov-parent-version').textContent = data.parent.version || '-';
     }
 
-    // Properties
     const propsContainer = document.getElementById('ov-properties');
     const keys = Object.keys(data.properties || {});
     if (keys.length === 0) {
@@ -108,55 +188,159 @@ function renderOverview(data) {
     }
 }
 
-// ---- RENDER: Dependency Hierarchy ----
-function renderDependencyHierarchy(data) {
-    // Build a simple tree from dependencies in pom
-    const deps = (data && data.dependencies) || [];
-    const treeEl = document.getElementById('depTree');
-    const listEl = document.getElementById('depList');
+// ---- RENDER: Dependency Tree ----
+function renderDependencyTree(data) {
+    const directDeps = data.directDependencies || [];
+    const allDeps = data.allDependencies || [];
+    const conflicts = data.conflicts || [];
 
-    if (deps.length === 0) {
+    treeData = directDeps;
+    allDepsData = allDeps;
+
+    // Build conflict lookup: gaKey -> { version, conflictingVersions }
+    const conflictMap = {};
+    conflicts.forEach(c => {
+        conflictMap[c.groupId + ':' + c.artifactId] = c;
+    });
+
+    // Build winner version map
+    const gaVersionMap = {};
+    allDeps.forEach(d => {
+        gaVersionMap[d.groupId + ':' + d.artifactId] = d.version;
+    });
+
+    // Render tree
+    const treeEl = document.getElementById('depTree');
+    if (directDeps.length === 0) {
         treeEl.innerHTML =
-            '<div class="empty-state"><span class="empty-icon">&#127795;</span><span>No dependencies found</span></div>';
-        listEl.innerHTML =
-            '<div class="empty-state"><span class="empty-icon">&#128230;</span><span>No resolved dependencies</span></div>';
-        return;
+            '<div class="empty-state"><span class="empty-icon">&#127795;</span><span>No dependencies</span></div>';
+    } else {
+        treeEl.innerHTML = renderTreeNode(directDeps, gaVersionMap, conflictMap, 0);
     }
 
-    // Tree view
-    treeEl.innerHTML =
-        '<div class="tree-node" onclick="toggleTree(this)">' +
-        '<span class="tree-caret">&#9660;</span>' +
-        '<span class="tree-icon">&#128230;</span>' +
-        '<span class="tree-label">Dependencies (' + deps.length + ')</span>' +
-        '</div>' +
-        '<div class="tree-children expanded">' +
-        deps.map((d) =>
-            '<div class="tree-node">' +
-            '<span class="tree-caret empty">&#9656;</span>' +
-            '<span class="tree-icon">&#128196;</span>' +
-            '<span class="tree-label">' + escHtml(d.artifactId) +
-            ' <span style="color:var(--desc);font-size:11px">' +
-            escHtml(d.version || '') + '</span></span>' +
-            '</div>'
-        ).join('') +
-        '</div>';
+    // Bind toggle handlers
+    treeEl.querySelectorAll('.tree-caret').forEach(caret => {
+        caret.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (this.classList.contains('empty')) return;
+            const children = this.parentElement.nextElementSibling;
+            if (children && children.classList.contains('tree-children')) {
+                const expanded = children.classList.toggle('expanded');
+                this.classList.toggle('collapsed', !expanded);
+                this.innerHTML = expanded ? '&#9660;' : '&#9656;';
+            }
+        });
+    });
 
-    // Resolved list
-    listEl.innerHTML = deps.map(d =>
-        '<div class="dep-list-item">' +
-        '<span class="dep-list-gav">' +
-        escHtml(d.groupId) + ' : ' + escHtml(d.artifactId) + ' : ' + escHtml(d.version || '(managed)') +
-        '</span>' +
-        (d.scope ? '<span class="dep-list-scope">' + escHtml(d.scope) + '</span>' : '') +
-        '</div>'
-    ).join('');
+    // Render resolved list
+    renderResolvedList(allDeps);
+
+    // Expand / collapse all buttons
+    document.getElementById('btnExpandAll').onclick = function () {
+        treeEl.querySelectorAll('.tree-children').forEach(c => c.classList.add('expanded'));
+        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => {
+            c.classList.remove('collapsed');
+            c.innerHTML = '&#9660;';
+        });
+    };
+    document.getElementById('btnCollapseAll').onclick = function () {
+        treeEl.querySelectorAll('.tree-children').forEach(c => c.classList.remove('expanded'));
+        treeEl.querySelectorAll('.tree-caret:not(.empty)').forEach(c => {
+            c.classList.add('collapsed');
+            c.innerHTML = '&#9656;';
+        });
+    };
+
+    // Sort toggle
+    let sortAlpha = false;
+    document.getElementById('btnSortAlpha').onclick = function () {
+        sortAlpha = !sortAlpha;
+        this.classList.toggle('active', sortAlpha);
+        const sorted = sortAlpha
+            ? [...allDeps].sort((a, b) => (a.groupId + ':' + a.artifactId).localeCompare(b.groupId + ':' + b.artifactId))
+            : allDeps;
+        renderResolvedList(sorted);
+        applyListFilter(currentFilterQuery);
+    };
+}
+
+function renderResolvedList(deps) {
+    const listEl = document.getElementById('depList');
+    if (deps.length === 0) {
+        listEl.innerHTML =
+            '<div class="empty-state"><span class="empty-icon">&#128230;</span><span>No resolved dependencies</span></div>';
+    } else {
+        listEl.innerHTML = deps.map(d =>
+            '<div class="dep-list-item' + (!d.resolved ? ' unresolved' : '') + '">' +
+            '<span class="dep-list-gav">' +
+            escHtml(d.groupId) + ' : ' + escHtml(d.artifactId) + ' : ' + escHtml(d.version || '(managed)') +
+            '</span>' +
+            (d.scope ? '<span class="dep-list-scope">' + escHtml(d.scope) + '</span>' : '') +
+            (!d.resolved ? '<span class="dep-list-warn">not found</span>' : '') +
+            '</div>'
+        ).join('');
+    }
+}
+
+function renderTreeNode(deps, gaVersionMap, conflictMap, depth) {
+    let html = '';
+    const indentPx = depth * 16;
+    deps.forEach(d => {
+        const ga = d.groupId + ':' + d.artifactId;
+        const winnerVersion = gaVersionMap[ga];
+        const isConflict = d.version !== winnerVersion;
+        const cInfo = conflictMap[ga];
+        const isUnresolved = !d.resolved;
+
+        let rowClass = 'tree-node';
+        if (isConflict) rowClass += ' conflict';
+        if (isUnresolved) rowClass += ' unresolved';
+        if (depth === 0) rowClass += ' root';
+
+        const hasChildren = d.children && d.children.length > 0;
+
+        html += '<div class="' + rowClass + '" style="padding-left:' + (indentPx + 8) + 'px">';
+        html += '<span class="tree-caret' + (!hasChildren ? ' empty' : ' collapsed') + '">' +
+            (hasChildren ? '&#9656;' : '&#9656;') + '</span>';
+        html += '<span class="tree-icon">' + (isUnresolved ? '&#9888;' : '&#128196;') + '</span>';
+        html += '<span class="tree-label">';
+        html += escHtml(d.artifactId) + ' ';
+        html += '<span class="tree-version' + (isConflict ? ' conflict-ver' : '') + (isUnresolved ? ' unresolved-ver' : '') + '">';
+        html += escHtml(d.version || '');
+        html += '</span>';
+
+        if (isConflict && winnerVersion) {
+            html += ' <span class="conflict-badge" title="omitted for conflict with ' +
+                escHtml(winnerVersion) + '">omitted for conflict with ' + escHtml(winnerVersion) + '</span>';
+        }
+        if (isUnresolved && d.errorMessage) {
+            html += ' <span class="unresolved-badge" title="' + escHtml(d.errorMessage) + '">unresolved</span>';
+        }
+        html += '</span>';
+        html += '<span class="tree-scope">' + escHtml(d.scope || '') + '</span>';
+        html += '</div>';
+
+        if (hasChildren) {
+            html += '<div class="tree-children">';
+            html += renderTreeNode(d.children, gaVersionMap, conflictMap, depth + 1);
+            html += '</div>';
+        }
+    });
+    return html;
 }
 
 // ---- RENDER: Effective POM ----
-function renderEffectivePom(text) {
-    // For now, just show the raw pom as a placeholder for effective POM
-    document.getElementById('effectivePomText').value = text || '';
+function renderEffectivePom(xml) {
+    const textarea = document.getElementById('effectivePomText');
+    if (textarea) {
+        textarea.value = xml || '';
+    } else {
+        const container = document.getElementById('effectivePomContainer');
+        if (container) {
+            container.innerHTML = '<textarea readonly id="effectivePomText">' +
+                escHtml(xml || '') + '</textarea>';
+        }
+    }
 }
 
 // ---- RENDER: Raw pom.xml ----
@@ -167,7 +351,14 @@ function renderRawPom(text) {
     document.getElementById('rawPomText').value = rawPomOriginal;
 }
 
-// ---- Save handler: Ctrl+S / Cmd+S in pom.xml tab ----
+// Sync textarea changes to VS Code document to mark dirty
+document.getElementById('rawPomText').addEventListener('input', function () {
+    if (this.value !== rawPomOriginal) {
+        vscode.postMessage({ type: 'syncText', text: this.value });
+    }
+});
+
+// ---- Save & undo handlers ----
 document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -177,17 +368,13 @@ document.addEventListener('keydown', function (e) {
             vscode.postMessage({ type: 'updatePom', text: newText });
         }
     }
-});
-
-// ---- Tree toggle ----
-function toggleTree(node) {
-    const caret = node.querySelector('.tree-caret');
-    const children = node.nextElementSibling;
-    if (children && children.classList.contains('tree-children')) {
-        const expanded = children.classList.toggle('expanded');
-        caret.innerHTML = expanded ? '&#9660;' : '&#9656;';
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        const textarea = document.getElementById('rawPomText');
+        if (textarea && document.activeElement === textarea) {
+            e.stopPropagation();
+        }
     }
-}
+});
 
 // ---- Splitter drag ----
 (function () {
@@ -205,7 +392,7 @@ function toggleTree(node) {
     });
 
     document.addEventListener('mousemove', function (e) {
-        if (!dragging) { return; }
+        if (!dragging) return;
         const rect = container.getBoundingClientRect();
         const splitterW = splitter.offsetWidth;
         const x = e.clientX - rect.left;
@@ -217,7 +404,7 @@ function toggleTree(node) {
     });
 
     document.addEventListener('mouseup', function () {
-        if (!dragging) { return; }
+        if (!dragging) return;
         dragging = false;
         splitter.classList.remove('active');
         document.body.style.cursor = '';
@@ -225,12 +412,85 @@ function toggleTree(node) {
     });
 })();
 
-// ---- Filter (stub) ----
-document.getElementById('depFilter').addEventListener('input', function() {
-    // Filter logic will be implemented later
+// ---- Filter ----
+let currentFilterQuery = '';
+
+document.getElementById('depFilter').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    currentFilterQuery = this.value.trim().toLowerCase();
+    applyFilter();
 });
-document.getElementById('btnRefresh').addEventListener('click', function() {
-    vscode.postMessage({ type: 'ready' });
+
+function applyFilter() {
+    const query = currentFilterQuery;
+    const treeEl = document.getElementById('depTree');
+    const allNodes = treeEl.querySelectorAll('.tree-node');
+    const allChildren = treeEl.querySelectorAll('.tree-children');
+
+    // Clear tree filter state
+    allNodes.forEach(n => n.classList.remove('hidden'));
+    allChildren.forEach(c => c.classList.remove('always-expanded'));
+
+    if (!query) {
+        applyListFilter('');
+        return;
+    }
+
+    // Mark matching nodes
+    const matched = new Set();
+    allNodes.forEach(node => {
+        const label = node.querySelector('.tree-label');
+        if (label && label.textContent.toLowerCase().includes(query)) {
+            matched.add(node);
+        }
+    });
+
+    // Mark ancestors of matching nodes
+    allNodes.forEach(node => {
+        if (!matched.has(node)) return;
+        let parent = node.parentElement;
+        while (parent) {
+            if (parent.classList.contains('tree-children')) {
+                parent.classList.add('always-expanded');
+                const prev = parent.previousElementSibling;
+                if (prev && prev.classList.contains('tree-node')) {
+                    matched.add(prev);
+                }
+            }
+            parent = parent.parentElement;
+        }
+    });
+
+    // Show/hide nodes
+    allNodes.forEach(n => n.classList.toggle('hidden', !matched.has(n)));
+
+    // Filter list
+    applyListFilter(query);
+}
+
+function applyListFilter(query) {
+    const listItems = document.querySelectorAll('#depList .dep-list-item');
+    if (!query) {
+        listItems.forEach(item => item.classList.remove('filtered-out'));
+    } else {
+        listItems.forEach(item => {
+            const gav = item.querySelector('.dep-list-gav');
+            const match = gav && gav.textContent.toLowerCase().includes(query);
+            item.classList.toggle('filtered-out', !match);
+        });
+    }
+}
+
+document.getElementById('btnRefresh').addEventListener('click', function () {
+    hierarchyData = null;
+    lastHierarchyPomText = '';
+    effectivePomData = null;
+    lastEffectivePomText = '';
+    renderedTabs.delete('hierarchy');
+    renderedTabs.delete('effective');
+    currentFilterQuery = '';
+    document.getElementById('depFilter').value = '';
+    ensureTabRendered('hierarchy');
 });
 
 // ---- Helpers ----
@@ -240,5 +500,4 @@ function escHtml(s) {
     return d.innerHTML;
 }
 
-// Request initial data
 vscode.postMessage({ type: 'ready' });

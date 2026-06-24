@@ -1,7 +1,7 @@
 {
-  "name": "helloworld",
-  "displayName": "helloworld",
-  "description": "helloworld",
+  "name": "pom-craft",
+  "displayName": "POM Craft",
+  "description": "Visual Maven POM editor with dependency hierarchy and effective POM",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.124.2"
@@ -9,13 +9,30 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCustomEditor:pomCraft.pomEditor"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "POM Craft",
+      "properties": {
+        "pomCraft.jdkPath": {
+          "type": "string",
+          "default": "",
+          "description": "JDK installation path (e.g. C:/jdk/zulu21-jdk)"
+        },
+        "pomCraft.settingsXml": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Maven settings.xml"
+        }
+      }
+    },
     "commands": [
       {
-        "command": "helloworld.helloWorld",
-        "title": "Hello World"
+        "command": "pomCraft.showOutput",
+        "title": "POM Craft: Show Output"
       }
     ],
     "customEditors": [

@@ -77,13 +77,19 @@
         <div class="tab-page" id="page-hierarchy">
             <div class="dep-hierarchy">
                 <div class="dep-toolbar">
-                    <input type="text" id="depFilter" placeholder="Filter dependencies...">
+                    <input type="text" id="depFilter" placeholder="Press Enter to filter...">
                     <button class="toolbar-btn" id="btnRefresh" title="Refresh dependency tree">&#8635; Refresh</button>
                 </div>
                 <div class="dep-panels" id="depPanels">
                     <!-- Dependency Tree -->
                     <div class="dep-tree-panel" id="depTreePanel">
-                        <div class="dep-panel-header">Dependency Hierarchy</div>
+                        <div class="dep-panel-header">
+                            <span>Dependency Hierarchy</span>
+                            <span class="panel-header-actions">
+                                <button class="header-btn" id="btnExpandAll" title="Expand all">&#8862;</button>
+                                <button class="header-btn" id="btnCollapseAll" title="Collapse all">&#8863;</button>
+                            </span>
+                        </div>
                         <div class="dep-panel-body" id="depTree">
                             <div class="empty-state">
                                 <span class="empty-icon">&#127795;</span>
@@ -95,7 +101,12 @@
                     <div class="dep-splitter" id="depSplitter"></div>
                     <!-- Resolved Dependencies -->
                     <div class="dep-list-panel" id="depListPanel">
-                        <div class="dep-panel-header">Resolved Dependencies</div>
+                        <div class="dep-panel-header">
+                            <span>Resolved Dependencies</span>
+                            <span class="panel-header-actions">
+                                <button class="header-btn" id="btnSortAlpha" title="Sort alphabetically">&#8645;</button>
+                            </span>
+                        </div>
                         <div class="dep-panel-body" id="depList">
                             <div class="empty-state">
                                 <span class="empty-icon">&#128230;</span>
@@ -109,7 +120,7 @@
 
         <!-- EFFECTIVE POM TAB -->
         <div class="tab-page" id="page-effective">
-            <div class="xml-view">
+            <div class="xml-view" id="effectivePomContainer">
                 <textarea readonly id="effectivePomText" placeholder="Effective POM will appear here..."></textarea>
             </div>
         </div>

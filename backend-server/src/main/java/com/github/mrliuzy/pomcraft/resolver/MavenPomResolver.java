@@ -113,7 +113,20 @@ public class MavenPomResolver {
         return result;
     }
 
-    private Model buildEffectiveModel(File pomFile) throws ModelBuildingException {
+    public String getEffectivePomXml() {
+        try {
+            Model model = buildEffectiveModel(config.getTargetPom());
+            if (model == null) return null;
+            java.io.StringWriter sw = new java.io.StringWriter();
+            new org.apache.maven.model.io.xpp3.MavenXpp3Writer().write(sw, model);
+            return sw.toString();
+        } catch (Exception e) {
+            LOG.error("Failed to get effective POM", e);
+            return null;
+        }
+    }
+
+    Model buildEffectiveModel(File pomFile) throws ModelBuildingException {
         try {
             ModelBuildingRequest req = new DefaultModelBuildingRequest();
             req.setPomFile(pomFile);
