@@ -9,9 +9,11 @@
   "categories": [
     "Other"
   ],
+  "publisher": "TuQiaoLangZi",
   "activationEvents": [
     "onCustomEditor:pomCraft.pomEditor"
   ],
+  "repository": {"url": "https://github.com/MrLiuzy/pom-craft.git"},
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
