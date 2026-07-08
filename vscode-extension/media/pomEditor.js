@@ -35,9 +35,6 @@ function ensureTabRendered(tabName) {
     if (renderedTabs.has(tabName)) return;
     renderedTabs.add(tabName);
     switch (tabName) {
-        case 'overview':
-            renderOverview(latestPomData);
-            break;
         case 'hierarchy':
             lastHierarchyPomText = rawPomText;
             requestHierarchy();
@@ -79,13 +76,10 @@ window.addEventListener('message', e => {
             tabConfig.insertSpaces = msg.insertSpaces !== undefined ? msg.insertSpaces : true;
             tabConfig.tabSize = msg.tabSize || 4;
             if (renderedTabs.size === 0) {
-                ensureTabRendered('overview');
+                ensureTabRendered('raw');
             } else {
                 renderedTabs.forEach(tab => {
-                    switch (tab) {
-                        case 'overview': renderOverview(latestPomData); break;
-                        case 'raw': renderRawPom(rawPomText); break;
-                    }
+                    if (tab === 'raw') renderRawPom(rawPomText);
                 });
             }
             break;
@@ -99,7 +93,6 @@ window.addEventListener('message', e => {
             lastEffectivePomText = '';
             currentFilterQuery = '';
             document.getElementById('depFilter').value = '';
-            renderOverview(latestPomData);
             renderRawPom(rawPomText);
             renderedTabs.delete('hierarchy');
             renderedTabs.delete('effective');
@@ -161,35 +154,7 @@ window.addEventListener('message', e => {
 });
 
 // ---- RENDER: Overview ----
-function renderOverview(data) {
-    if (!data) return;
-    const a = data.artifact || {};
-    document.getElementById('ov-groupId').textContent = a.groupId || '-';
-    document.getElementById('ov-artifactId').textContent = a.artifactId || '-';
-    document.getElementById('ov-version').textContent = a.version || '-';
-    document.getElementById('ov-packaging').textContent = a.packaging || 'jar';
 
-    if (data.parent) {
-        document.getElementById('ov-parent-groupId').textContent = data.parent.groupId || '-';
-        document.getElementById('ov-parent-artifactId').textContent = data.parent.artifactId || '-';
-        document.getElementById('ov-parent-version').textContent = data.parent.version || '-';
-    }
-
-    const propsContainer = document.getElementById('ov-properties');
-    const keys = Object.keys(data.properties || {});
-    if (keys.length === 0) {
-        propsContainer.innerHTML =
-            '<div class="empty-state"><span class="empty-icon">&#128196;</span><span>No properties</span></div>';
-    } else {
-        propsContainer.innerHTML = keys.map(k =>
-            '<div class="prop-row">' +
-            '<span class="prop-key">' + escHtml(k) + '</span>' +
-            '<span class="prop-eq">=</span>' +
-            '<span class="prop-val">' + escHtml(data.properties[k]) + '</span>' +
-            '</div>'
-        ).join('');
-    }
-}
 
 // ---- RENDER: Dependency Tree ----
 function renderDependencyTree(data) {
